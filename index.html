@@ -3,24 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>4 Player Chess - Professional Edition</title>
+    <title>4 Player Chess - Battle Royale</title>
     <style>
         body { display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100vh; margin: 0; background: #2c3e50; font-family: sans-serif; overflow: hidden; touch-action: none; }
-        #status { color: white; font-size: 18px; margin-bottom: 10px; padding: 10px 25px; border-radius: 8px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; }
-        #board { display: grid; grid-template-columns: repeat(14, 6.5vw); grid-template-rows: repeat(14, 6.5vw); border: 4px solid #34495e; box-shadow: 0 0 20px rgba(0,0,0,0.5); }
-        .cell { width: 6.5vw; height: 6.5vw; display: flex; justify-content: center; align-items: center; font-size: 5vw; cursor: pointer; transition: background 0.2s; }
+        #status { color: white; font-size: 18px; margin-bottom: 10px; padding: 10px 25px; border-radius: 8px; font-weight: bold; text-transform: uppercase; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
+        #board { display: grid; grid-template-columns: repeat(14, 6.5vw); grid-template-rows: repeat(14, 6.5vw); border: 4px solid #34495e; }
+        .cell { width: 6.5vw; height: 6.5vw; display: flex; justify-content: center; align-items: center; font-size: 5vw; cursor: pointer; transition: 0.2s; }
         .white { background-color: #ecf0f1; }
         .black { background-color: #95a5a6; }
         .empty { background-color: transparent; border: none; pointer-events: none; }
-        .red { color: #ff4d4d; text-shadow: 1px 1px 2px black; } 
-        .blue { color: #4d94ff; text-shadow: 1px 1px 2px black; } 
-        .yellow { color: #ffd11a; text-shadow: 1px 1px 2px black; } 
-        .green { color: #4dff88; text-shadow: 1px 1px 2px black; }
+        .red { color: #ff4d4d; } .blue { color: #4d94ff; } .yellow { color: #ffd11a; } .green { color: #4dff88; }
         .selected { background-color: #f1c40f !important; transform: scale(0.9); }
-        .turn-green { background: #4dff88; color: black; box-shadow: 0 0 10px #4dff88; }
-        .turn-yellow { background: #ffd11a; color: black; box-shadow: 0 0 10px #ffd11a; }
-        .turn-red { background: #ff4d4d; color: white; box-shadow: 0 0 10px #ff4d4d; }
-        .turn-blue { background: #4d94ff; color: white; box-shadow: 0 0 10px #4d94ff; }
+        .turn-green { background: #4dff88; color: black; }
+        .turn-yellow { background: #ffd11a; color: black; }
+        .turn-red { background: #ff4d4d; color: white; }
+        .turn-blue { background: #4d94ff; color: white; }
         @media (min-width: 600px) {
             #board { grid-template-columns: repeat(14, 45px); grid-template-rows: repeat(14, 45px); }
             .cell { width: 45px; height: 45px; font-size: 32px; }
@@ -28,7 +25,7 @@
     </style>
 </head>
 <body>
-    <div id="status">NAVBT: GREEN</div>
+    <div id="status">NAVBAT: GREEN</div>
     <div id="board"></div>
 
     <script>
@@ -46,14 +43,37 @@
             statusDiv.className = "turn-" + color;
         }
 
+        function removePlayerPieces(color) {
+            document.querySelectorAll('.cell').forEach(cell => {
+                if (cell.dataset.color === color) {
+                    cell.innerText = '';
+                    cell.classList.remove('red', 'green', 'blue', 'yellow');
+                    delete cell.dataset.type;
+                    delete cell.dataset.color;
+                }
+            });
+        }
+
+        function nextTurn() {
+            currentTurnIndex = (currentTurnIndex + 1) % 4;
+            const nextColor = turnOrder[currentTurnIndex];
+            const kingExists = !!document.querySelector(`.cell[data-type="K"][data-color="${nextColor}"]`);
+            
+            // Agar keyingi o'yinchi yutqazgan bo'lsa, navbatni o'tkazamiz
+            if (!kingExists && document.querySelectorAll('.cell[data-type="K"]').length > 0) {
+                nextTurn();
+            } else {
+                updateStatus();
+            }
+        }
+
+        // Taxtani chizish
         for (let r = 0; r < 14; r++) {
             for (let c = 0; c < 14; c++) {
                 const cell = document.createElement('div');
                 cell.className = 'cell';
                 cell.dataset.r = r; cell.dataset.c = c;
-                const isCorner = (r < 3 || r > 10) && (c < 3 || c > 10);
-                
-                if (isCorner) { cell.classList.add('empty'); } 
+                if ((r < 3 || r > 10) && (c < 3 || c > 10)) { cell.classList.add('empty'); } 
                 else {
                     cell.classList.add((r + c) % 2 === 0 ? 'white' : 'black');
                     let type = '', color = '';
@@ -78,11 +98,15 @@
                     const activeColor = turnOrder[currentTurnIndex];
                     if (selectedCell) {
                         if (canMove(selectedCell, this)) {
+                            if (this.dataset.type === 'K') {
+                                alert(this.dataset.color.toUpperCase() + " mag'lub bo'ldi!");
+                                removePlayerPieces(this.dataset.color);
+                            }
+
                             let pType = selectedCell.dataset.type;
                             let pColor = selectedCell.dataset.color;
                             let tr = parseInt(this.dataset.r), tc = parseInt(this.dataset.c);
 
-                            // QOIDA 1: Vazirga aylanish
                             if (pType === 'P') {
                                 if ((pColor === 'green' && tr === 3) || (pColor === 'red' && tr === 10) ||
                                     (pColor === 'yellow' && tc === 10) || (pColor === 'blue' && tc === 3)) {
@@ -101,9 +125,7 @@
                             delete selectedCell.dataset.type;
                             delete selectedCell.dataset.color;
 
-                            // QOIDA 2: Navbat almashishi
-                            currentTurnIndex = (currentTurnIndex + 1) % 4;
-                            updateStatus();
+                            nextTurn();
                         }
                         if(selectedCell) selectedCell.classList.remove('selected');
                         selectedCell = null;
@@ -122,7 +144,7 @@
             const type = from.dataset.type, color = from.dataset.color;
             const targetColor = to.dataset.color;
 
-            if (targetColor === color) return false; // O'zinikini urmaslik
+            if (targetColor === color) return false;
             const dr = Math.abs(tr - fr), dc = Math.abs(tc - fc);
 
             if (type === 'N') return (dr === 2 && dc === 1) || (dr === 1 && dc === 2);
@@ -132,7 +154,6 @@
             if (type === 'K') return (dr <= 1 && dc <= 1);
 
             if (type === 'P') {
-                // QOIDA 3: Piyoda diagonal faqat urish uchun (orqaga yura olmaydi)
                 if (targetColor) {
                     if (dr !== 1 || dc !== 1) return false;
                     if (color === 'green') return fr - tr === 1;
@@ -140,7 +161,6 @@
                     if (color === 'yellow') return tc - fc === 1;
                     if (color === 'blue') return fc - tc === 1;
                 }
-                // QOIDA 4: Piyoda faqat oldinga (2 qadam boshida, orqaga yurish taqiqlangan)
                 if (color === 'green' && dc === 0) {
                     if (fr === 12) return (fr - tr === 1 || fr - tr === 2) && tr < fr;
                     return fr - tr === 1;
