@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>4 Player Chess - Professional Logic</title>
+    <title>4 Player Chess - Final Pro</title>
     <style>
         body { display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100vh; margin: 0; background: #2c3e50; font-family: sans-serif; overflow: hidden; touch-action: none; }
         #status { color: white; font-size: 18px; margin-bottom: 10px; padding: 10px 25px; border-radius: 8px; font-weight: bold; text-transform: uppercase; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
@@ -58,39 +58,53 @@
         function isKingInCheck(color) {
             const kingCell = document.querySelector(`.cell[data-type="K"][data-color="${color}"]`);
             if (!kingCell) return false;
-            const kr = parseInt(kingCell.dataset.r), kc = parseInt(kingCell.dataset.c);
-            
-            const allEnemyCells = document.querySelectorAll(`.cell[data-color]`);
-            for (let enemy of allEnemyCells) {
-                if (enemy.dataset.color !== color) {
-                    if (canMoveInternal(enemy, kingCell, true)) return true;
-                }
+            const enemies = document.querySelectorAll(`.cell[data-color]:not([data-color="${color}"])`);
+            for (let enemy of enemies) {
+                if (canMoveBasic(enemy, kingCell)) return true;
             }
             return false;
+        }
+
+        function isCheckmate(color) {
+            if (!isKingInCheck(color)) return false;
+            const myPieces = document.querySelectorAll(`.cell[data-color="${color}"]`);
+            const allCells = document.querySelectorAll('.cell:not(.empty)');
+            for (let piece of myPieces) {
+                for (let target of allCells) {
+                    if (canMoveSafe(piece, target)) return false;
+                }
+            }
+            return true;
         }
 
         function nextTurn() {
             currentTurnIndex = (currentTurnIndex + 1) % 4;
             const nextColor = turnOrder[currentTurnIndex];
             const kingExists = !!document.querySelector(`.cell[data-type="K"][data-color="${nextColor}"]`);
-            if (!kingExists && document.querySelectorAll('.cell[data-type="K"]').length > 0) {
+            
+            if (!kingExists && document.querySelectorAll('.cell[data-type="K"]').length > 1) {
                 nextTurn();
-            } else {
-                updateStatus();
-                // Shoh bo'lsa qizil yonib turadi
-                document.querySelectorAll('.cell').forEach(c => c.classList.remove('in-check'));
-                if(isKingInCheck(nextColor)) {
-                    document.querySelector(`.cell[data-type="K"][data-color="${nextColor}"]`).classList.add('in-check');
-                }
+                return;
             }
+
+            if (kingExists && isCheckmate(nextColor)) {
+                alert("MOT! " + nextColor.toUpperCase() + " yutqazdi!");
+                removePlayerPieces(nextColor);
+                nextTurn();
+                return;
+            }
+
+            updateStatus();
+            document.querySelectorAll('.cell').forEach(c => c.classList.remove('in-check'));
+            const king = document.querySelector(`.cell[data-type="K"][data-color="${nextColor}"]`);
+            if(king && isKingInCheck(nextColor)) king.classList.add('in-check');
         }
 
-        // Taxtani yaratish... (Oldingi kod bilan bir xil)
+        // Taxtani chizish
         for (let r = 0; r < 14; r++) {
             for (let c = 0; c < 14; c++) {
                 const cell = document.createElement('div');
-                cell.className = 'cell';
-                cell.dataset.r = r; cell.dataset.c = c;
+                cell.className = 'cell'; cell.dataset.r = r; cell.dataset.c = c;
                 if ((r < 3 || r > 10) && (c < 3 || c > 10)) { cell.classList.add('empty'); } 
                 else {
                     cell.classList.add((r + c) % 2 === 0 ? 'white' : 'black');
@@ -104,77 +118,54 @@
                     else if (c === 13 && r >= 3 && r <= 10) { type = order[r-3]; color = 'blue'; }
                     else if (c === 12 && r >= 3 && r <= 10) { type = 'P'; color = 'blue'; }
 
-                    if (type) {
-                        cell.innerText = pieces[type];
-                        cell.classList.add(color);
-                        cell.dataset.type = type;
-                        cell.dataset.color = color;
-                    }
+                    if (type) { cell.innerText = pieces[type]; cell.classList.add(color); cell.dataset.type = type; cell.dataset.color = color; }
                 }
 
                 cell.addEventListener('click', function() {
                     const activeColor = turnOrder[currentTurnIndex];
                     if (selectedCell) {
-                        if (canMoveWithCheckSafety(selectedCell, this)) {
-                            if (this.dataset.type === 'K') {
-                                removePlayerPieces(this.dataset.color);
-                            }
-                            executeMove(selectedCell, this);
+                        if (canMoveSafe(selectedCell, this)) {
+                            if (this.dataset.type === 'K') removePlayerPieces(this.dataset.color);
+                            movePiece(selectedCell, this);
                             nextTurn();
                         }
-                        selectedCell.classList.remove('selected');
-                        selectedCell = null;
+                        selectedCell.classList.remove('selected'); selectedCell = null;
                     } else if (this.dataset.color === activeColor) {
-                        selectedCell = this;
-                        this.classList.add('selected');
+                        selectedCell = this; this.classList.add('selected');
                     }
                 });
                 board.appendChild(cell);
             }
         }
 
-        function canMoveWithCheckSafety(from, to) {
-            if (!canMoveInternal(from, to)) return false;
-            
-            // Simulyatsiya: bu yurishdan keyin ham o'z shohi xavfdami?
-            const originalToType = to.dataset.type, originalToColor = to.dataset.color, originalToText = to.innerText;
-            const originalFromType = from.dataset.type, originalFromColor = from.dataset.color, originalFromText = from.innerText;
-            
-            to.innerText = originalFromText; to.dataset.type = originalFromType; to.dataset.color = originalFromColor;
-            from.innerText = ''; delete from.dataset.type; delete from.dataset.color;
-            
-            const stillInCheck = isKingInCheck(originalFromColor);
-            
-            // Orqaga qaytarish
-            from.innerText = originalFromText; from.dataset.type = originalFromType; from.dataset.color = originalFromColor;
-            to.innerText = originalToText; 
-            if(originalToType) { to.dataset.type = originalToType; to.dataset.color = originalToColor; }
-            else { delete to.dataset.type; delete to.dataset.color; }
-            
-            return !stillInCheck;
-        }
-
-        function executeMove(from, to) {
-            let type = from.dataset.type;
-            const color = from.dataset.color;
+        function movePiece(from, to) {
+            let type = from.dataset.type; const color = from.dataset.color;
             const tr = parseInt(to.dataset.r), tc = parseInt(to.dataset.c);
-            
             if (type === 'P') {
-                if ((color === 'green' && tr === 3) || (color === 'red' && tr === 10) ||
-                    (color === 'yellow' && tc === 10) || (color === 'blue' && tc === 3)) type = 'Q';
+                if ((color==='green' && tr===3) || (color==='red' && tr===10) || (color==='yellow' && tc===10) || (color==='blue' && tc===3)) type = 'Q';
             }
-            
             to.innerText = pieces[type]; to.dataset.type = type; to.dataset.color = color;
             to.classList.remove('red', 'green', 'blue', 'yellow'); to.classList.add(color);
-            from.innerText = ''; from.classList.remove('red', 'green', 'blue', 'yellow');
-            delete from.dataset.type; delete from.dataset.color;
+            from.innerText = ''; delete from.dataset.type; delete from.dataset.color;
         }
 
-        function canMoveInternal(from, to, ignoreCheck = false) {
+        function canMoveSafe(from, to) {
+            if (!canMoveBasic(from, to)) return false;
+            const fT = from.dataset.type, fC = from.dataset.color, fTxt = from.innerText;
+            const tT = to.dataset.type, tC = to.dataset.color, tTxt = to.innerText;
+            to.dataset.type = fT; to.dataset.color = fC; to.innerText = fTxt;
+            delete from.dataset.type; delete from.dataset.color; from.innerText = '';
+            const safe = !isKingInCheck(fC);
+            from.dataset.type = fT; from.dataset.color = fC; from.innerText = fTxt;
+            if(tT) { to.dataset.type = tT; to.dataset.color = tC; to.innerText = tTxt; }
+            else { delete to.dataset.type; delete to.dataset.color; to.innerText = ''; }
+            return safe;
+        }
+
+        function canMoveBasic(from, to) {
             const fr = parseInt(from.dataset.r), fc = parseInt(from.dataset.c);
             const tr = parseInt(to.dataset.r), tc = parseInt(to.dataset.c);
-            const type = from.dataset.type, color = from.dataset.color;
-            const targetColor = to.dataset.color;
+            const type = from.dataset.type, color = from.dataset.color, targetColor = to.dataset.color;
             if (targetColor === color) return false;
             const dr = Math.abs(tr - fr), dc = Math.abs(tc - fc);
 
@@ -184,7 +175,7 @@
             if (type === 'Q') return (fr === tr || fc === tc || dr === dc);
             if (type === 'K') return (dr <= 1 && dc <= 1);
             if (type === 'P') {
-                if (targetColor) return dr === 1 && dc === 1 && ((color==='green' && fr>tr) || (color==='red' && fr<tr) || (color==='yellow' && fc<tc) || (color==='blue' && fc>tc));
+                if (targetColor) return dr === 1 && dc === 1 && ((color==='green' && tr<fr) || (color==='red' && tr>fr) || (color==='yellow' && tc>fc) || (color==='blue' && tc<fc));
                 if (color === 'green' && dc === 0) return (fr === 12 ? (fr-tr===1||fr-tr===2) : fr-tr===1) && tr < fr;
                 if (color === 'red' && dc === 0) return (fr === 1 ? (tr-fr===1||tr-fr===2) : tr-fr===1) && tr > fr;
                 if (color === 'yellow' && dr === 0) return (fc === 1 ? (tc-fc===1||tc-fc===2) : tc-fc===1) && tc > fc;
