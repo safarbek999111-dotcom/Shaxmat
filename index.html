@@ -3,29 +3,32 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>4 Player Chess Pro</title>
+    <title>4 Player Chess - Professional Edition</title>
     <style>
-        body { display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100vh; margin: 0; background: #2c3e50; font-family: sans-serif; }
-        #status { color: white; font-size: 18px; margin-bottom: 10px; padding: 8px 20px; border-radius: 5px; font-weight: bold; }
-        #board { display: grid; grid-template-columns: repeat(14, 6.5vw); grid-template-rows: repeat(14, 6.5vw); border: 2px solid #34495e; }
-        .cell { width: 6.5vw; height: 6.5vw; display: flex; justify-content: center; align-items: center; font-size: 5vw; cursor: pointer; transition: 0.2s; }
+        body { display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100vh; margin: 0; background: #2c3e50; font-family: sans-serif; overflow: hidden; touch-action: none; }
+        #status { color: white; font-size: 18px; margin-bottom: 10px; padding: 10px 25px; border-radius: 8px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; }
+        #board { display: grid; grid-template-columns: repeat(14, 6.5vw); grid-template-rows: repeat(14, 6.5vw); border: 4px solid #34495e; box-shadow: 0 0 20px rgba(0,0,0,0.5); }
+        .cell { width: 6.5vw; height: 6.5vw; display: flex; justify-content: center; align-items: center; font-size: 5vw; cursor: pointer; transition: background 0.2s; }
         .white { background-color: #ecf0f1; }
         .black { background-color: #95a5a6; }
-        .empty { background-color: transparent; pointer-events: none; }
-        .red { color: #ff4d4d; } .blue { color: #4d94ff; } .yellow { color: #ffd11a; } .green { color: #4dff88; }
-        .selected { background-color: #f1c40f !important; }
-        .turn-green { background: #4dff88; color: black !important; }
-        .turn-yellow { background: #ffd11a; color: black !important; }
-        .turn-red { background: #ff4d4d; color: white !important; }
-        .turn-blue { background: #4d94ff; color: white !important; }
+        .empty { background-color: transparent; border: none; pointer-events: none; }
+        .red { color: #ff4d4d; text-shadow: 1px 1px 2px black; } 
+        .blue { color: #4d94ff; text-shadow: 1px 1px 2px black; } 
+        .yellow { color: #ffd11a; text-shadow: 1px 1px 2px black; } 
+        .green { color: #4dff88; text-shadow: 1px 1px 2px black; }
+        .selected { background-color: #f1c40f !important; transform: scale(0.9); }
+        .turn-green { background: #4dff88; color: black; box-shadow: 0 0 10px #4dff88; }
+        .turn-yellow { background: #ffd11a; color: black; box-shadow: 0 0 10px #ffd11a; }
+        .turn-red { background: #ff4d4d; color: white; box-shadow: 0 0 10px #ff4d4d; }
+        .turn-blue { background: #4d94ff; color: white; box-shadow: 0 0 10px #4d94ff; }
         @media (min-width: 600px) {
-            #board { grid-template-columns: repeat(14, 40px); grid-template-rows: repeat(14, 40px); }
-            .cell { width: 40px; height: 40px; font-size: 30px; }
+            #board { grid-template-columns: repeat(14, 45px); grid-template-rows: repeat(14, 45px); }
+            .cell { width: 45px; height: 45px; font-size: 32px; }
         }
     </style>
 </head>
 <body>
-    <div id="status">Navbat: GREEN</div>
+    <div id="status">NAVBT: GREEN</div>
     <div id="board"></div>
 
     <script>
@@ -39,11 +42,10 @@
 
         function updateStatus() {
             const color = turnOrder[currentTurnIndex];
-            statusDiv.innerText = "Navbat: " + color.toUpperCase();
+            statusDiv.innerText = "NAVBAT: " + color;
             statusDiv.className = "turn-" + color;
         }
 
-        // Taxtani yaratish
         for (let r = 0; r < 14; r++) {
             for (let c = 0; c < 14; c++) {
                 const cell = document.createElement('div');
@@ -78,10 +80,9 @@
                         if (canMove(selectedCell, this)) {
                             let pType = selectedCell.dataset.type;
                             let pColor = selectedCell.dataset.color;
-                            let tr = parseInt(this.dataset.r);
-                            let tc = parseInt(this.dataset.c);
+                            let tr = parseInt(this.dataset.r), tc = parseInt(this.dataset.c);
 
-                            // 1. Piyoda Vazir bo'lishi
+                            // QOIDA 1: Vazirga aylanish
                             if (pType === 'P') {
                                 if ((pColor === 'green' && tr === 3) || (pColor === 'red' && tr === 10) ||
                                     (pColor === 'yellow' && tc === 10) || (pColor === 'blue' && tc === 3)) {
@@ -89,7 +90,6 @@
                                 }
                             }
 
-                            // Ko'chirish
                             this.innerText = pieces[pType];
                             this.dataset.type = pType;
                             this.dataset.color = pColor;
@@ -101,7 +101,7 @@
                             delete selectedCell.dataset.type;
                             delete selectedCell.dataset.color;
 
-                            // 2. Navbatni o'zgartirish
+                            // QOIDA 2: Navbat almashishi
                             currentTurnIndex = (currentTurnIndex + 1) % 4;
                             updateStatus();
                         }
@@ -119,12 +119,10 @@
         function canMove(from, to) {
             const fr = parseInt(from.dataset.r), fc = parseInt(from.dataset.c);
             const tr = parseInt(to.dataset.r), tc = parseInt(to.dataset.c);
-            const type = from.dataset.type;
-            const color = from.dataset.color;
+            const type = from.dataset.type, color = from.dataset.color;
             const targetColor = to.dataset.color;
 
-            if (targetColor === color) return false;
-
+            if (targetColor === color) return false; // O'zinikini urmaslik
             const dr = Math.abs(tr - fr), dc = Math.abs(tc - fc);
 
             if (type === 'N') return (dr === 2 && dc === 1) || (dr === 1 && dc === 2);
@@ -132,27 +130,32 @@
             if (type === 'B') return (dr === dc);
             if (type === 'Q') return (fr === tr || fc === tc || dr === dc);
             if (type === 'K') return (dr <= 1 && dc <= 1);
-            
-            // 3. Piyoda qoidasi (2 qadam bilan)
+
             if (type === 'P') {
-                if (targetColor) return dr === 1 && dc === 1; // Diagonal urish
-                if (dc === 0) {
-                    if (color === 'green') {
-                        if (fr === 12) return (fr - tr === 1 || fr - tr === 2);
-                        return fr - tr === 1;
-                    }
-                    if (color === 'red') {
-                        if (fr === 1) return (tr - fr === 1 || tr - fr === 2);
-                        return tr - fr === 1;
-                    }
-                    if (color === 'yellow') {
-                        if (fc === 1) return (tc - fc === 1 || tc - fc === 2);
-                        return tc - fc === 1;
-                    }
-                    if (color === 'blue') {
-                        if (fc === 12) return (fc - tc === 1 || fc - tc === 2);
-                        return fc - tc === 1;
-                    }
+                // QOIDA 3: Piyoda diagonal faqat urish uchun (orqaga yura olmaydi)
+                if (targetColor) {
+                    if (dr !== 1 || dc !== 1) return false;
+                    if (color === 'green') return fr - tr === 1;
+                    if (color === 'red') return tr - fr === 1;
+                    if (color === 'yellow') return tc - fc === 1;
+                    if (color === 'blue') return fc - tc === 1;
+                }
+                // QOIDA 4: Piyoda faqat oldinga (2 qadam boshida, orqaga yurish taqiqlangan)
+                if (color === 'green' && dc === 0) {
+                    if (fr === 12) return (fr - tr === 1 || fr - tr === 2) && tr < fr;
+                    return fr - tr === 1;
+                }
+                if (color === 'red' && dc === 0) {
+                    if (fr === 1) return (tr - fr === 1 || tr - fr === 2) && tr > fr;
+                    return tr - fr === 1;
+                }
+                if (color === 'yellow' && dr === 0) {
+                    if (fc === 1) return (tc - fc === 1 || tc - fc === 2) && tc > fc;
+                    return tc - fc === 1;
+                }
+                if (color === 'blue' && dr === 0) {
+                    if (fc === 12) return (fc - tc === 1 || fc - tc === 2) && tc < fc;
+                    return fc - tc === 1;
                 }
             }
             return false;
