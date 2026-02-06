@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>4 Player Chess Pro</title>
+    <title>4 Player Chess Fix</title>
     <style>
         body { display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; background: #2c3e50; overflow: hidden; touch-action: none; font-family: sans-serif; }
         #board { display: grid; grid-template-columns: repeat(14, 6.5vw); grid-template-rows: repeat(14, 6.5vw); border: 2px solid #34495e; }
@@ -27,20 +27,16 @@
         const order = ['R','N','B','Q','K','B','N','R'];
         let selectedCell = null;
 
-        // TAHTANI VA FIGURALARNI YARATISH
         for (let r = 0; r < 14; r++) {
             for (let c = 0; c < 14; c++) {
                 const cell = document.createElement('div');
                 cell.className = 'cell';
-                cell.dataset.r = r;
-                cell.dataset.c = c;
+                cell.dataset.r = r; cell.dataset.c = c;
                 const isCorner = (r < 3 || r > 10) && (c < 3 || c > 10);
                 
-                if (isCorner) {
-                    cell.classList.add('empty');
-                } else {
+                if (isCorner) { cell.classList.add('empty'); } 
+                else {
                     cell.classList.add((r + c) % 2 === 0 ? 'white' : 'black');
-                    
                     let type = '', color = '';
                     if (r === 0 && c >= 3 && c <= 10) { type = order[c-3]; color = 'red'; }
                     else if (r === 1 && c >= 3 && c <= 10) { type = 'P'; color = 'red'; }
@@ -59,37 +55,45 @@
                     }
                 }
 
-                cell.addEventListener('click', () => {
+                cell.addEventListener('click', function() {
                     if (selectedCell) {
-                        if (canMove(selectedCell, cell)) {
-                            // Ko'chirish
-                            cell.innerText = selectedCell.innerText;
-                            cell.dataset.type = selectedCell.dataset.type;
-                            cell.dataset.color = selectedCell.dataset.color;
-                            cell.className = selectedCell.className;
-                            cell.classList.remove('selected');
+                        if (canMove(selectedCell, this)) {
+                            // 1. Yangi katakka ma'lumotlarni ko'chirish
+                            this.innerText = selectedCell.innerText;
+                            this.dataset.type = selectedCell.dataset.type;
+                            this.dataset.color = selectedCell.dataset.color;
                             
+                            // 2. Rang klasslarini to'g'irlash
+                            this.classList.remove('red', 'green', 'blue', 'yellow');
+                            this.classList.add(selectedCell.dataset.color);
+                            
+                            // 3. Eski katakni butkul tozalash
                             selectedCell.innerText = '';
+                            selectedCell.classList.remove('red', 'green', 'blue', 'yellow');
                             delete selectedCell.dataset.type;
                             delete selectedCell.dataset.color;
-                            selectedCell.className = 'cell ' + ((parseInt(selectedCell.dataset.r) + parseInt(selectedCell.dataset.c)) % 2 === 0 ? 'white' : 'black');
                         }
                         selectedCell.classList.remove('selected');
                         selectedCell = null;
-                    } else if (cell.innerText !== '') {
-                        selectedCell = cell;
-                        cell.classList.add('selected');
+                    } else if (this.innerText !== '') {
+                        selectedCell = this;
+                        this.classList.add('selected');
                     }
                 });
                 board.appendChild(cell);
             }
         }
 
-        // SHAXMAT QOIDALARI
         function canMove(from, to) {
             const fr = parseInt(from.dataset.r), fc = parseInt(from.dataset.c);
             const tr = parseInt(to.dataset.r), tc = parseInt(to.dataset.c);
             const type = from.dataset.type;
+            const color = from.dataset.color;
+            const targetColor = to.dataset.color;
+
+            // O'z rangidagilarni urishni taqiqlash (Eng muhim qator)
+            if (targetColor === color) return false;
+
             const dr = Math.abs(tr - fr), dc = Math.abs(tc - fc);
 
             if (type === 'N') return (dr === 2 && dc === 1) || (dr === 1 && dc === 2);
@@ -97,7 +101,7 @@
             if (type === 'B') return (dr === dc);
             if (type === 'Q') return (fr === tr || fc === tc || dr === dc);
             if (type === 'K') return (dr <= 1 && dc <= 1);
-            if (type === 'P') return (dr + dc === 1); // Piyoda uchun sodda yurish
+            if (type === 'P') return (dr + dc === 1 || (dr === 1 && dc === 1 && targetColor));
 
             return false;
         }
