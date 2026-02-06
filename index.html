@@ -2,112 +2,143 @@
 <html lang="uz">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>4 Player Chess - Safarbek</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>4 Player Chess - Final Fix</title>
     <style>
-        body { background: #2c3e50; color: white; margin: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; font-family: 'Segoe UI', sans-serif; overflow: hidden; }
-        #ui { margin-bottom: 15px; padding: 10px 25px; background: #2ecc71; border-radius: 8px; font-size: 22px; font-weight: bold; text-transform: uppercase; box-shadow: 0 4px 6px rgba(0,0,0,0.3); transition: 0.3s; }
-        #board { display: grid; grid-template-columns: repeat(14, 1fr); width: 95vw; max-width: 550px; aspect-ratio: 1 / 1; border: 5px solid #34495e; background: #34495e; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
-        .cell { width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; cursor: pointer; font-size: 6.5vw; user-select: none; -webkit-tap-highlight-color: transparent; }
-        @media (min-width: 550px) { .cell { font-size: 35px; } }
-        .white { background: #ecf0f1; } .black { background: #bdc3c7; }
-        .empty { visibility: hidden; } .selected { background: #f1c40f !important; border: 2px solid white inset; }
-        /* Jamoalar Ranglari */
-        .p-green { color: #27ae60; } .p-red { color: #e74c3c; }
-        .p-yellow { color: #f1c40f; } .p-blue { color: #3498db; }
+        body { display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100vh; margin: 0; background: #2c3e50; font-family: sans-serif; overflow: hidden; touch-action: none; }
+        #status { color: white; font-size: 18px; margin-bottom: 10px; padding: 10px 25px; border-radius: 8px; font-weight: bold; text-transform: uppercase; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
+        #board { display: grid; grid-template-columns: repeat(14, 6.5vw); grid-template-rows: repeat(14, 6.5vw); border: 4px solid #34495e; background: #34495e; }
+        .cell { width: 6.5vw; height: 6.5vw; display: flex; justify-content: center; align-items: center; font-size: 5vw; cursor: pointer; }
+        .white { background-color: #ecf0f1; }
+        .black { background-color: #95a5a6; }
+        .empty { background-color: transparent; border: none; pointer-events: none; }
+        .red { color: #ff4d4d; } .blue { color: #4d94ff; } .yellow { color: #ffd11a; } .green { color: #4dff88; }
+        .selected { background-color: #f1c40f !important; }
+        .turn-green { background: #4dff88; color: black; }
+        .turn-yellow { background: #ffd11a; color: black; }
+        .turn-red { background: #ff4d4d; color: white; }
+        .turn-blue { background: #4d94ff; color: white; }
+        @media (min-width: 600px) {
+            #board { grid-template-columns: repeat(14, 45px); grid-template-rows: repeat(14, 45px); }
+            .cell { width: 45px; height: 45px; font-size: 32px; }
+        }
     </style>
 </head>
 <body>
-    <div id="ui">NAVBAT: <span id="turn-display">GREEN</span></div>
+    <div id="status" class="turn-green">NAVBAT: GREEN</div>
     <div id="board"></div>
 
-<script>
-    const turnUI = document.getElementById('ui');
-    const turnDisplay = document.getElementById('turn-display');
-    const turns = ["Green", "Red", "Yellow", "Blue"];
-    const turnColors = {"Green": "#2ecc71", "Red": "#e74c3c", "Yellow": "#f1c40f", "Blue": "#3498db"};
-    let currentTurnIndex = 0;
-    let selectedID = null;
-
-    function initBoard() {
+    <script>
         const board = document.getElementById('board');
-        board.innerHTML = "";
-        for(let r=0; r<14; r++) {
-            for(let c=0; c<14; c++) {
+        const statusDiv = document.getElementById('status');
+        const pieces = { 'R': '♜', 'N': '♞', 'B': '♝', 'Q': '♛', 'K': '♚', 'P': '♙' };
+        const order = ['R','N','B','Q','K','B','N','R'];
+        const turnOrder = ['green', 'yellow', 'red', 'blue'];
+        let currentTurnIndex = 0;
+        let selectedCell = null;
+
+        function updateStatus() {
+            const color = turnOrder[currentTurnIndex];
+            statusDiv.innerText = "NAVBAT: " + color.toUpperCase();
+            statusDiv.className = "turn-" + color;
+        }
+
+        function removePlayer(color) {
+            document.querySelectorAll('.cell').forEach(cell => {
+                if (cell.dataset.color === color) {
+                    cell.innerText = '';
+                    cell.classList.remove('red', 'green', 'blue', 'yellow');
+                    delete cell.dataset.type; delete cell.dataset.color;
+                }
+            });
+        }
+
+        for (let r = 0; r < 14; r++) {
+            for (let c = 0; c < 14; c++) {
                 const cell = document.createElement('div');
-                cell.id = `r${r}c${c}`;
-                cell.className = 'cell ' + ((r+c)%2==0?'white':'black');
-                if((r<3||r>10)&&(c<3||c>10)) cell.classList.add('empty');
-                cell.onclick = () => onCellClick(cell.id);
+                cell.className = 'cell'; cell.dataset.r = r; cell.dataset.c = c;
+                if ((r < 3 || r > 10) && (c < 3 || c > 10)) { cell.classList.add('empty'); } 
+                else {
+                    cell.classList.add((r + c) % 2 === 0 ? 'white' : 'black');
+                    let type = '', color = '';
+                    if (r === 0 && c >= 3 && c <= 10) { type = order[c-3]; color = 'red'; }
+                    else if (r === 1 && c >= 3 && c <= 10) { type = 'P'; color = 'red'; }
+                    else if (r === 13 && c >= 3 && c <= 10) { type = order[c-3]; color = 'green'; }
+                    else if (r === 12 && c >= 3 && c <= 10) { type = 'P'; color = 'green'; }
+                    else if (c === 0 && r >= 3 && r <= 10) { type = order[r-3]; color = 'yellow'; }
+                    else if (c === 1 && r >= 3 && r <= 10) { type = 'P'; color = 'yellow'; }
+                    else if (c === 13 && r >= 3 && r <= 10) { type = order[r-3]; color = 'blue'; }
+                    else if (c === 12 && r >= 3 && r <= 10) { type = 'P'; color = 'blue'; }
+                    if (type) { cell.innerText = pieces[type]; cell.classList.add(color); cell.dataset.type = type; cell.dataset.color = color; }
+                }
+
+                cell.addEventListener('click', function() {
+                    const activeColor = turnOrder[currentTurnIndex];
+                    if (selectedCell) {
+                        if (canMove(selectedCell, this)) {
+                            if (this.dataset.type === 'K') {
+                                const victim = this.dataset.color;
+                                movePiece(selectedCell, this);
+                                removePlayer(victim);
+                                alert(victim.toUpperCase() + " yutqazdi!");
+                            } else {
+                                movePiece(selectedCell, this);
+                            }
+                            currentTurnIndex = (currentTurnIndex + 1) % 4;
+                            while (!document.querySelector(`.cell[data-type="K"][data-color="${turnOrder[currentTurnIndex]}"]`)) {
+                                currentTurnIndex = (currentTurnIndex + 1) % 4;
+                            }
+                            updateStatus();
+                        }
+                        selectedCell.classList.remove('selected'); selectedCell = null;
+                    } else if (this.dataset.color === activeColor) {
+                        selectedCell = this; this.classList.add('selected');
+                    }
+                });
                 board.appendChild(cell);
             }
         }
-        setupAllPieces();
-    }
 
-    function setupAllPieces() {
-        const mainSet = ['♖','♘','♗','♕','♔','♗','♘','♖'];
-        // 1. YASHIL (Past)
-        for(let i=0; i<8; i++) {
-            setPiece(13, 3+i, mainSet[i], 'p-green');
-            setPiece(12, 3+i, '♙', 'p-green');
+        function movePiece(from, to) {
+            let type = from.dataset.type; const color = from.dataset.color;
+            const tr = parseInt(to.dataset.r);
+            const tc = parseInt(to.dataset.c);
+            if (type === 'P' && ((color==='green'&&tr===3)||(color==='red'&&tr===10)||(color==='yellow'&&tc===10)||(color==='blue'&&tc===3))) type = 'Q';
+            to.innerText = pieces[type]; to.dataset.type = type; to.dataset.color = color;
+            to.classList.remove('red', 'green', 'blue', 'yellow'); to.classList.add(color);
+            from.innerText = ''; delete from.dataset.type; delete from.dataset.color;
         }
-        // 2. QIZIL (Tepa)
-        for(let i=0; i<8; i++) {
-            setPiece(0, 3+i, mainSet[i], 'p-red');
-            setPiece(1, 3+i, '♟', 'p-red');
-        }
-        // 3. SARIQ (Chap)
-        for(let i=0; i<8; i++) {
-            setPiece(3+i, 0, mainSet[i], 'p-yellow');
-            setPiece(3+i, 1, '♟', 'p-yellow');
-        }
-        // 4. MOVIY (O'ng)
-        for(let i=0; i<8; i++) {
-            setPiece(3+i, 13, mainSet[i], 'p-blue');
-            setPiece(3+i, 12, '♙', 'p-blue');
-        }
-    }
 
-    function setPiece(r, c, char, cls) {
-        const el = document.getElementById(`r${r}c${c}`);
-        el.innerText = char;
-        el.classList.add(cls);
-    }
+        function canMove(from, to) {
+            const fr = parseInt(from.dataset.r), fc = parseInt(from.dataset.c), tr = parseInt(to.dataset.r), tc = parseInt(to.dataset.c);
+            const type = from.dataset.type, color = from.dataset.color, targetColor = to.dataset.color;
+            if (targetColor === color) return false;
+            const dr = Math.abs(tr - fr), dc = Math.abs(tc - fc);
 
-    function onCellClick(id) {
-        const cell = document.getElementById(id);
-        if(!selectedID) {
-            if(cell.innerText !== "") {
-                selectedID = id;
-                cell.classList.add('selected');
+            if (type === 'N') return (dr === 2 && dc === 1) || (dr === 1 && dc === 2);
+            if (type === 'R') return (fr === tr || fc === tc) && isPathClear(fr, fc, tr, tc);
+            if (type === 'B') return (dr === dc) && isPathClear(fr, fc, tr, tc);
+            if (type === 'Q') return (fr === tr || fc === tc || dr === dc) && isPathClear(fr, fc, tr, tc);
+            if (type === 'K') return dr <= 1 && dc <= 1;
+            if (type === 'P') {
+                if (targetColor) return dr === 1 && dc === 1 && ((color==='green'&&tr<fr)||(color==='red'&&tr>fr)||(color==='yellow'&&tc>fc)||(color==='blue'&&tc<fc));
+                if (color==='green') return dc===0 && (fr===12 ? (fr-tr===1||fr-tr===2) : fr-tr===1) && tr<fr && isPathClear(fr,fc,tr,tc);
+                if (color==='red') return dc===0 && (fr===1 ? (tr-fr===1||tr-fr===2) : tr-fr===1) && tr>fr && isPathClear(fr,fc,tr,tc);
+                if (color==='yellow') return dr===0 && (fc===1 ? (tc-fc===1||tc-fc===2) : tc-fc===1) && tc>fc && isPathClear(fr,fc,tr,tc);
+                if (color==='blue') return dr===0 && (fc===12 ? (fc-tc===1||fc-tc===2) : fc-tc===1) && tc<fc && isPathClear(fr,fc,tr,tc);
             }
-        } else {
-            const from = document.getElementById(selectedID);
-            if(from.id === id) { // Bekor qilish
-                from.classList.remove('selected');
-                selectedID = null;
-                return;
-            }
-            
-            cell.innerText = from.innerText;
-            cell.className = from.className; 
-            cell.classList.remove('selected');
-            from.innerText = "";
-            const [r, c] = selectedID.match(/\d+/g).map(Number);
-            from.className = 'cell ' + ((r+c)%2==0?'white':'black');
-            
-            selectedID = null;
-            
-            // Navbatni almashtirish
-            currentTurnIndex = (currentTurnIndex + 1) % 4;
-            const next = turns[currentTurnIndex];
-            turnDisplay.innerText = next;
-            turnUI.style.backgroundColor = turnColors[next];
+            return false;
         }
-    }
 
-    initBoard();
-</script>
+        function isPathClear(fr, fc, tr, tc) {
+            const dr = Math.sign(tr - fr), dc = Math.sign(tc - fc);
+            let r = fr + dr, c = fc + dc;
+            while (r !== tr || c !== tc) {
+                if (document.querySelector(`.cell[data-r="${r}"][data-c="${c}"]`).dataset.type) return false;
+                r += dr; c += dc;
+            }
+            return true;
+        }
+    </script>
 </body>
 </html>
