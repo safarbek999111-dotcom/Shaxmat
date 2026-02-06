@@ -2,143 +2,99 @@
 <html lang="uz">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>4 Player Chess - Final Fix</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Safarbek 4 Player Chess</title>
     <style>
-        body { display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100vh; margin: 0; background: #2c3e50; font-family: sans-serif; overflow: hidden; touch-action: none; }
-        #status { color: white; font-size: 18px; margin-bottom: 10px; padding: 10px 25px; border-radius: 8px; font-weight: bold; text-transform: uppercase; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
-        #board { display: grid; grid-template-columns: repeat(14, 6.5vw); grid-template-rows: repeat(14, 6.5vw); border: 4px solid #34495e; background: #34495e; }
-        .cell { width: 6.5vw; height: 6.5vw; display: flex; justify-content: center; align-items: center; font-size: 5vw; cursor: pointer; }
-        .white { background-color: #ecf0f1; }
-        .black { background-color: #95a5a6; }
-        .empty { background-color: transparent; border: none; pointer-events: none; }
-        .red { color: #ff4d4d; } .blue { color: #4d94ff; } .yellow { color: #ffd11a; } .green { color: #4dff88; }
-        .selected { background-color: #f1c40f !important; }
-        .turn-green { background: #4dff88; color: black; }
-        .turn-yellow { background: #ffd11a; color: black; }
-        .turn-red { background: #ff4d4d; color: white; }
-        .turn-blue { background: #4d94ff; color: white; }
-        @media (min-width: 600px) {
-            #board { grid-template-columns: repeat(14, 45px); grid-template-rows: repeat(14, 45px); }
-            .cell { width: 45px; height: 45px; font-size: 32px; }
-        }
+        body { background: #2c3e50; color: white; margin: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; font-family: sans-serif; overflow: hidden; }
+        #ui { margin-bottom: 10px; padding: 8px 20px; border-radius: 5px; font-weight: bold; font-size: 18px; }
+        /* DOSKANI OLDINGI KICHIKROQ HOLATIGA QAYTARDIM */
+        #board { display: grid; grid-template-columns: repeat(14, 1fr); width: 90vw; max-width: 420px; aspect-ratio: 1 / 1; border: 3px solid #34495e; background: #7f8c8d; }
+        .cell { width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; cursor: pointer; font-size: 5.5vw; user-select: none; }
+        @media (min-width: 420px) { .cell { font-size: 24px; } }
+        .white { background: #ecf0f1; } .black { background: #bdc3c7; }
+        .empty { visibility: hidden; } .selected { background: #f1c40f !important; }
+        /* Jamoa ranglari */
+        .green { color: #27ae60; } .red { color: #e74c3c; }
+        .yellow { color: #f1c40f; } .blue { color: #3498db; }
     </style>
 </head>
 <body>
-    <div id="status" class="turn-green">NAVBAT: GREEN</div>
+    <div id="ui" style="background: #27ae60;">NAVBAT: <span id="turn-txt">GREEN</span></div>
     <div id="board"></div>
 
-    <script>
+<script>
+    const turnUI = document.getElementById('ui');
+    const turnTxt = document.getElementById('turn-txt');
+    const teams = ["green", "red", "yellow", "blue"];
+    let curIdx = 0, sel = null;
+
+    function init() {
         const board = document.getElementById('board');
-        const statusDiv = document.getElementById('status');
-        const pieces = { 'R': '♜', 'N': '♞', 'B': '♝', 'Q': '♛', 'K': '♚', 'P': '♙' };
-        const order = ['R','N','B','Q','K','B','N','R'];
-        const turnOrder = ['green', 'yellow', 'red', 'blue'];
-        let currentTurnIndex = 0;
-        let selectedCell = null;
-
-        function updateStatus() {
-            const color = turnOrder[currentTurnIndex];
-            statusDiv.innerText = "NAVBAT: " + color.toUpperCase();
-            statusDiv.className = "turn-" + color;
+        board.innerHTML = "";
+        for(let i=0; i<196; i++) {
+            let r = Math.floor(i/14), c = i%14;
+            let d = document.createElement('div');
+            d.id = `r${r}c${c}`;
+            d.className = 'cell ' + ((r+c)%2==0?'white':'black');
+            if((r<3||r>10)&&(c<3||c>10)) d.classList.add('empty');
+            d.onclick = () => click(d);
+            board.appendChild(d);
         }
+        setup();
+    }
 
-        function removePlayer(color) {
-            document.querySelectorAll('.cell').forEach(cell => {
-                if (cell.dataset.color === color) {
-                    cell.innerText = '';
-                    cell.classList.remove('red', 'green', 'blue', 'yellow');
-                    delete cell.dataset.type; delete cell.dataset.color;
-                }
-            });
+    function setup() {
+        const main = ['♖','♘','♗','♕','♔','♗','♘','♖'];
+        for(let i=0; i<8; i++) {
+            add(13, 3+i, main[i], 'green'); add(12, 3+i, '♙', 'green'); // Past
+            add(0, 3+i, main[i], 'red'); add(1, 3+i, '♟', 'red'); // Tepa
+            add(3+i, 0, main[i], 'yellow'); add(3+i, 1, '♟', 'yellow'); // Chap
+            add(3+i, 13, main[i], 'blue'); add(3+i, 12, '♙', 'blue'); // O'ng
         }
+    }
 
-        for (let r = 0; r < 14; r++) {
-            for (let c = 0; c < 14; c++) {
-                const cell = document.createElement('div');
-                cell.className = 'cell'; cell.dataset.r = r; cell.dataset.c = c;
-                if ((r < 3 || r > 10) && (c < 3 || c > 10)) { cell.classList.add('empty'); } 
-                else {
-                    cell.classList.add((r + c) % 2 === 0 ? 'white' : 'black');
-                    let type = '', color = '';
-                    if (r === 0 && c >= 3 && c <= 10) { type = order[c-3]; color = 'red'; }
-                    else if (r === 1 && c >= 3 && c <= 10) { type = 'P'; color = 'red'; }
-                    else if (r === 13 && c >= 3 && c <= 10) { type = order[c-3]; color = 'green'; }
-                    else if (r === 12 && c >= 3 && c <= 10) { type = 'P'; color = 'green'; }
-                    else if (c === 0 && r >= 3 && r <= 10) { type = order[r-3]; color = 'yellow'; }
-                    else if (c === 1 && r >= 3 && r <= 10) { type = 'P'; color = 'yellow'; }
-                    else if (c === 13 && r >= 3 && r <= 10) { type = order[r-3]; color = 'blue'; }
-                    else if (c === 12 && r >= 3 && r <= 10) { type = 'P'; color = 'blue'; }
-                    if (type) { cell.innerText = pieces[type]; cell.classList.add(color); cell.dataset.type = type; cell.dataset.color = color; }
-                }
+    function add(r, c, p, cls) {
+        let el = document.getElementById(`r${r}c${c}`);
+        el.innerText = p; el.classList.add(cls);
+    }
 
-                cell.addEventListener('click', function() {
-                    const activeColor = turnOrder[currentTurnIndex];
-                    if (selectedCell) {
-                        if (canMove(selectedCell, this)) {
-                            if (this.dataset.type === 'K') {
-                                const victim = this.dataset.color;
-                                movePiece(selectedCell, this);
-                                removePlayer(victim);
-                                alert(victim.toUpperCase() + " yutqazdi!");
-                            } else {
-                                movePiece(selectedCell, this);
-                            }
-                            currentTurnIndex = (currentTurnIndex + 1) % 4;
-                            while (!document.querySelector(`.cell[data-type="K"][data-color="${turnOrder[currentTurnIndex]}"]`)) {
-                                currentTurnIndex = (currentTurnIndex + 1) % 4;
-                            }
-                            updateStatus();
-                        }
-                        selectedCell.classList.remove('selected'); selectedCell = null;
-                    } else if (this.dataset.color === activeColor) {
-                        selectedCell = this; this.classList.add('selected');
-                    }
-                });
-                board.appendChild(cell);
+    function click(d) {
+        let turn = teams[curIdx];
+        if(!sel) {
+            // Faqat o'z rangini tanlay oladi
+            if(d.innerText !== "" && d.classList.contains(turn)) {
+                sel = d; d.classList.add('selected');
             }
-        }
-
-        function movePiece(from, to) {
-            let type = from.dataset.type; const color = from.dataset.color;
-            const tr = parseInt(to.dataset.r);
-            const tc = parseInt(to.dataset.c);
-            if (type === 'P' && ((color==='green'&&tr===3)||(color==='red'&&tr===10)||(color==='yellow'&&tc===10)||(color==='blue'&&tc===3))) type = 'Q';
-            to.innerText = pieces[type]; to.dataset.type = type; to.dataset.color = color;
-            to.classList.remove('red', 'green', 'blue', 'yellow'); to.classList.add(color);
-            from.innerText = ''; delete from.dataset.type; delete from.dataset.color;
-        }
-
-        function canMove(from, to) {
-            const fr = parseInt(from.dataset.r), fc = parseInt(from.dataset.c), tr = parseInt(to.dataset.r), tc = parseInt(to.dataset.c);
-            const type = from.dataset.type, color = from.dataset.color, targetColor = to.dataset.color;
-            if (targetColor === color) return false;
-            const dr = Math.abs(tr - fr), dc = Math.abs(tc - fc);
-
-            if (type === 'N') return (dr === 2 && dc === 1) || (dr === 1 && dc === 2);
-            if (type === 'R') return (fr === tr || fc === tc) && isPathClear(fr, fc, tr, tc);
-            if (type === 'B') return (dr === dc) && isPathClear(fr, fc, tr, tc);
-            if (type === 'Q') return (fr === tr || fc === tc || dr === dc) && isPathClear(fr, fc, tr, tc);
-            if (type === 'K') return dr <= 1 && dc <= 1;
-            if (type === 'P') {
-                if (targetColor) return dr === 1 && dc === 1 && ((color==='green'&&tr<fr)||(color==='red'&&tr>fr)||(color==='yellow'&&tc>fc)||(color==='blue'&&tc<fc));
-                if (color==='green') return dc===0 && (fr===12 ? (fr-tr===1||fr-tr===2) : fr-tr===1) && tr<fr && isPathClear(fr,fc,tr,tc);
-                if (color==='red') return dc===0 && (fr===1 ? (tr-fr===1||tr-fr===2) : tr-fr===1) && tr>fr && isPathClear(fr,fc,tr,tc);
-                if (color==='yellow') return dr===0 && (fc===1 ? (tc-fc===1||tc-fc===2) : tc-fc===1) && tc>fc && isPathClear(fr,fc,tr,tc);
-                if (color==='blue') return dr===0 && (fc===12 ? (fc-tc===1||fc-tc===2) : fc-tc===1) && tc<fc && isPathClear(fr,fc,tr,tc);
+        } else {
+            if(sel === d) { // Tanlashni bekor qilish
+                sel.classList.remove('selected'); sel = null; return;
             }
-            return false;
-        }
-
-        function isPathClear(fr, fc, tr, tc) {
-            const dr = Math.sign(tr - fr), dc = Math.sign(tc - fc);
-            let r = fr + dr, c = fc + dc;
-            while (r !== tr || c !== tc) {
-                if (document.querySelector(`.cell[data-r="${r}"][data-c="${c}"]`).dataset.type) return false;
-                r += dr; c += dc;
+            // O'z jamoasini ura olmaydi
+            if(d.innerText !== "" && d.classList.contains(turn)) {
+                sel.classList.remove('selected'); sel = d; d.classList.add('selected'); return;
             }
-            return true;
+
+            // Harakatni amalga oshirish
+            d.innerText = sel.innerText;
+            d.className = sel.className; // Rangini o'tkazish
+            d.classList.remove('selected');
+            
+            sel.innerText = "";
+            let [r, c] = sel.id.match(/\d+/g).map(Number);
+            sel.className = 'cell ' + ((r+c)%2==0?'white':'black');
+            
+            sel = null;
+            curIdx = (curIdx + 1) % 4;
+            turnTxt.innerText = teams[curIdx].toUpperCase();
+            turnUI.style.background = getHex(teams[curIdx]);
         }
-    </script>
+    }
+
+    function getHex(t) {
+        return t==='green'?'#27ae60':t==='red'?'#e74c3c':t==='yellow'?'#f1c40f':'#3498db';
+    }
+
+    init();
+</script>
 </body>
 </html>
