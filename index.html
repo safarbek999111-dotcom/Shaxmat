@@ -7,10 +7,10 @@
     <style>
         body { display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; background: #2c3e50; overflow: hidden; touch-action: none; }
         #board { display: grid; grid-template-columns: repeat(14, 6.5vw); grid-template-rows: repeat(14, 6.5vw); border: 2px solid #34495e; }
-        .cell { width: 6.5vw; height: 6.5vw; display: flex; justify-content: center; align-items: center; font-size: 5vw; cursor: pointer; user-select: none; }
+        .cell { width: 6.5vw; height: 6.5vw; display: flex; justify-content: center; align-items: center; font-size: 5vw; cursor: pointer; -webkit-tap-highlight-color: transparent; }
         .white { background-color: #ecf0f1; }
         .black { background-color: #95a5a6; }
-        .empty { background-color: transparent; border: none; }
+        .empty { background-color: transparent; }
         .red { color: #ff4d4d; } .blue { color: #4d94ff; } .yellow { color: #ffd11a; } .green { color: #4dff88; }
         .selected { background-color: #f1c40f !important; }
         @media (min-width: 600px) {
@@ -23,7 +23,7 @@
     <div id="board"></div>
     <script>
         const board = document.getElementById('board');
-        const p = { 'R': '♜', 'N': '♞', 'B': '♝', 'Q': '♛', 'K': '♚', 'P': '♟' };
+        const pieces = { 'R': '♜', 'N': '♞', 'B': '♝', 'Q': '♛', 'K': '♚', 'P': '♟' };
         const order = ['R','N','B','Q','K','B','N','R'];
         let selectedCell = null;
 
@@ -32,36 +32,46 @@
                 const cell = document.createElement('div');
                 cell.className = 'cell';
                 const isCorner = (r < 3 || r > 10) && (c < 3 || c > 10);
-                if (isCorner) { cell.classList.add('empty'); } 
-                else {
-                    cell.classList.add((r + c) % 2 === 0 ? 'white' : 'black');
-                    if (r === 0 && c >= 3 && c <= 10) { cell.innerText = p[order[c-3]]; cell.classList.add('red'); }
-                    if (r === 1 && c >= 3 && c <= 10) { cell.innerText = p['P']; cell.classList.add('red'); }
-                    if (r === 13 && c >= 3 && c <= 10) { cell.innerText = p[order[c-3]]; cell.classList.add('green'); }
-                    if (r === 12 && c >= 3 && c <= 10) { cell.innerText = p['P']; cell.classList.add('green'); }
-                    if (c === 0 && r >= 3 && r <= 10) { cell.innerText = p[order[r-3]]; cell.classList.add('yellow'); }
-                    if (c === 1 && r >= 3 && r <= 10) { cell.innerText = p['P']; cell.classList.add('yellow'); }
-                    if (c === 13 && r >= 3 && r <= 10) { cell.innerText = p[order[r-3]]; cell.classList.add('blue'); }
-                    if (c === 12 && r >= 3 && r <= 10) { cell.innerText = p['P']; cell.classList.add('blue'); }
-                }
                 
-                cell.onclick = () => {
+                if (isCorner) {
+                    cell.classList.add('empty');
+                } else {
+                    cell.classList.add((r + c) % 2 === 0 ? 'white' : 'black');
+                    // Figuralarni joylashtirish
+                    if (r === 0 && c >= 3 && c <= 10) { cell.innerText = pieces[order[c-3]]; cell.classList.add('red'); }
+                    if (r === 1 && c >= 3 && c <= 10) { cell.innerText = pieces['P']; cell.classList.add('red'); }
+                    if (r === 13 && c >= 3 && c <= 10) { cell.innerText = pieces[order[c-3]]; cell.classList.add('green'); }
+                    if (r === 12 && c >= 3 && c <= 10) { cell.innerText = pieces['P']; cell.classList.add('green'); }
+                    if (c === 0 && r >= 3 && r <= 10) { cell.innerText = pieces[order[r-3]]; cell.classList.add('yellow'); }
+                    if (c === 1 && r >= 3 && r <= 10) { cell.innerText = pieces['P']; cell.classList.add('yellow'); }
+                    if (c === 13 && r >= 3 && r <= 10) { cell.innerText = pieces[order[r-3]]; cell.classList.add('blue'); }
+                    if (c === 12 && r >= 3 && r <= 10) { cell.innerText = pieces['P']; cell.classList.add('blue'); }
+                }
+
+                // HARAKATLANISH MANTIQI
+                cell.addEventListener('click', function() {
                     if (selectedCell) {
-                        if (cell !== selectedCell && !cell.classList.contains('empty')) {
-                            cell.innerText = selectedCell.innerText;
-                            cell.className = selectedCell.className;
-                            cell.classList.remove('selected');
+                        if (this !== selectedCell) {
+                            // Figurani yangi joyga ko'chirish
+                            this.innerText = selectedCell.innerText;
+                            // Rangni ham ko'chiramiz
+                            const colors = ['red', 'blue', 'yellow', 'green'];
+                            colors.forEach(clr => {
+                                if (selectedCell.classList.contains(clr)) {
+                                    this.classList.add(clr);
+                                    selectedCell.classList.remove(clr);
+                                }
+                            });
                             selectedCell.innerText = '';
-                            selectedCell = null;
-                        } else {
-                            selectedCell.classList.remove('selected');
-                            selectedCell = null;
                         }
-                    } else if (cell.innerText !== '') {
-                        selectedCell = cell;
-                        cell.classList.add('selected');
+                        selectedCell.classList.remove('selected');
+                        selectedCell = null;
+                    } else if (this.innerText !== '') {
+                        selectedCell = this;
+                        this.classList.add('selected');
                     }
-                };
+                });
+
                 board.appendChild(cell);
             }
         }
