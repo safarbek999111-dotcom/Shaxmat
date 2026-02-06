@@ -1,114 +1,36 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>4 Player Chess - Rules</title>
-    <style>
-        body { display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; background: #2c3e50; overflow: hidden; touch-action: none; font-family: sans-serif; }
-        #board { display: grid; grid-template-columns: repeat(14, 6.5vw); grid-template-rows: repeat(14, 6.5vw); border: 2px solid #34495e; }
-        .cell { width: 6.5vw; height: 6.5vw; display: flex; justify-content: center; align-items: center; font-size: 5vw; cursor: pointer; -webkit-tap-highlight-color: transparent; position: relative; }
-        .white { background-color: #ecf0f1; }
-        .black { background-color: #95a5a6; }
-        .empty { background-color: transparent; border: none; pointer-events: none; }
-        .red { color: #ff4d4d; } .blue { color: #4d94ff; } .yellow { color: #ffd11a; } .green { color: #4dff88; }
-        .selected { background-color: #f1c40f !important; }
-        .possible-move::after { content: ''; width: 30%; height: 30%; background: rgba(0,0,0,0.1); border-radius: 50%; position: absolute; }
-        @media (min-width: 600px) {
-            #board { grid-template-columns: repeat(14, 40px); grid-template-rows: repeat(14, 40px); }
-            .cell { width: 40px; height: 40px; font-size: 30px; }
-        }
-    </style>
-</head>
-<body>
-    <div id="board"></div>
-    <script>
-        const board = document.getElementById('board');
-        const pieces = { 'R': '♜', 'N': '♞', 'B': '♝', 'Q': '♛', 'K': '♚', 'P': '♟' };
-        const order = ['R','N','B','Q','K','B','N','R'];
-        let selectedCell = null;
+// canMove funksiyasini mana bu professional variant bilan almashtiring:
+function canMove(from, to) {
+    const fr = parseInt(from.dataset.r), fc = parseInt(from.dataset.c);
+    const tr = parseInt(to.dataset.r), tc = parseInt(to.dataset.c);
+    const type = from.dataset.type;
+    const color = from.dataset.color;
+    const dr = tr - fr;
+    const dc = tc - fc;
+    const absDr = Math.abs(dr);
+    const absDc = Math.abs(dc);
 
-        const cells = [];
+    // 1. Ot (Knight) - L shakli
+    if (type === 'N') return (absDr === 2 && absDc === 1) || (absDr === 1 && absDc === 2);
 
-        for (let r = 0; r < 14; r++) {
-            cells[r] = [];
-            for (let c = 0; c < 14; c++) {
-                const cell = document.createElement('div');
-                cell.className = 'cell';
-                cell.dataset.r = r;
-                cell.dataset.c = c;
-                const isCorner = (r < 3 || r > 10) && (c < 3 || c > 10);
-                
-                if (isCorner) {
-                    cell.classList.add('empty');
-                } else {
-                    cell.classList.add((r + c) % 2 === 0 ? 'white' : 'black');
-                    if (r === 0 && c >= 3 && c <= 10) { cell.innerText = pieces[order[c-3]]; cell.classList.add('red'); cell.dataset.type = order[c-3]; cell.dataset.color = 'red'; }
-                    if (r === 1 && c >= 3 && c <= 10) { cell.innerText = pieces['P']; cell.classList.add('red'); cell.dataset.type = 'P'; cell.dataset.color = 'red'; }
-                    if (r === 13 && c >= 3 && c <= 10) { cell.innerText = pieces[order[c-3]]; cell.classList.add('green'); cell.dataset.type = order[c-3]; cell.dataset.color = 'green'; }
-                    if (r === 12 && c >= 3 && c <= 10) { cell.innerText = pieces['P']; cell.classList.add('green'); cell.dataset.type = 'P'; cell.dataset.color = 'green'; }
-                    if (c === 0 && r >= 3 && r <= 10) { cell.innerText = pieces[order[r-3]]; cell.classList.add('yellow'); cell.dataset.type = order[r-3]; cell.dataset.color = 'yellow'; }
-                    if (c === 1 && r >= 3 && r <= 10) { cell.innerText = pieces['P']; cell.classList.add('yellow'); cell.dataset.type = 'P'; cell.dataset.color = 'yellow'; }
-                    if (c === 13 && r >= 3 && r <= 10) { cell.innerText = pieces[order[r-3]]; cell.classList.add('blue'); cell.dataset.type = order[r-3]; cell.dataset.color = 'blue'; }
-                    if (c === 12 && r >= 3 && r <= 10) { cell.innerText = pieces['P']; cell.classList.add('blue'); cell.dataset.type = 'P'; cell.dataset.color = 'blue'; }
-                }
+    // 2. To'ra (Rook) - To'g'ri chiziq
+    if (type === 'R') return (fr === tr || fc === tc);
 
-                cell.addEventListener('click', () => handleCellClick(cell));
-                board.appendChild(cell);
-                cells[r][c] = cell;
-            }
-        }
+    // 3. Fil (Bishop) - Diagonal
+    if (type === 'B') return (absDr === absDc);
 
-        function handleCellClick(cell) {
-            if (selectedCell) {
-                if (canMove(selectedCell, cell)) {
-                    movePiece(selectedCell, cell);
-                }
-                selectedCell.classList.remove('selected');
-                selectedCell = null;
-            } else if (cell.innerText !== '') {
-                selectedCell = cell;
-                cell.classList.add('selected');
-            }
-        }
+    // 4. Farzin (Queen) - To'g'ri va Diagonal
+    if (type === 'Q') return (fr === tr || fc === tc || absDr === absDc);
 
-        function canMove(from, to) {
-            const fr = parseInt(from.dataset.r), fc = parseInt(from.dataset.fc || from.dataset.c);
-            const tr = parseInt(to.dataset.r), tc = parseInt(to.dataset.tc || to.dataset.c);
-            const type = from.dataset.type;
-            const dr = Math.abs(fr - tr);
-            const dc = Math.abs(fc - tc);
+    // 5. Shoh (King) - Atrofidagi 1 katak
+    if (type === 'K') return (absDr <= 1 && absDc <= 1);
 
-            // Ot (Knight) qoidasi: L shakli
-            if (type === 'N') {
-                return (dr === 2 && dc === 1) || (dr === 1 && dc === 2);
-            }
-            // Piyoda (Pawn) qoidasi (Sodda variant: faqat oldinga 1 qadam)
-            if (type === 'P') {
-                if (from.dataset.color === 'green' && fc === tc && fr - tr === 1) return true;
-                if (from.dataset.color === 'red' && fc === tc && tr - fr === 1) return true;
-                if (from.dataset.color === 'yellow' && fr === tr && tc - fc === 1) return true;
-                if (from.dataset.color === 'blue' && fr === tr && fc - tc === 1) return true;
-            }
-            // Hozircha qolgan figuralarga hamma joyga ruxsat (asta-sekin qo'shamiz)
-            if (['R','B','Q','K'].includes(type)) return true;
+    // 6. Piyoda (Pawn) - Yo'nalishga qarab
+    if (type === 'P') {
+        if (color === 'green' && dc === 0 && dr === -1) return true; // Pastdan tepaga
+        if (color === 'red' && dc === 0 && dr === 1) return true;    // Tepadan pastga
+        if (color === 'yellow' && dr === 0 && dc === 1) return true; // Chapdan o'ngga
+        if (color === 'blue' && dr === 0 && dc === -1) return true;  // O'ngdan chapga
+    }
 
-            return false;
-        }
-
-        function movePiece(from, to) {
-            to.innerText = from.innerText;
-            to.dataset.type = from.dataset.type;
-            to.dataset.color = from.dataset.color;
-            to.className = from.className;
-            to.classList.remove('selected');
-            
-            from.innerText = '';
-            delete from.dataset.type;
-            delete from.dataset.color;
-            from.className = 'cell ' + ((parseInt(from.dataset.r) + parseInt(from.dataset.c)) % 2 === 0 ? 'white' : 'black');
-        }
-    </script>
-</body>
-</html>
-
+    return false;
+}
