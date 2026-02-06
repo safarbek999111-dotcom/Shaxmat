@@ -3,69 +3,31 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Safarbek 4 Player Chess</title>
+    <title>Safarbek 4 Player Full Chess</title>
     <style>
-        body { 
-            background: #1a1a1a; color: white; margin: 0; padding: 0;
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            height: 100vh; font-family: sans-serif; overflow: hidden;
-        }
-        #ui { margin-bottom: 10px; text-align: center; font-size: 20px; font-weight: bold; }
-        .turn-Green { color: #00ff00; }
-        .turn-Red { color: #ff4444; }
-        .turn-Yellow { color: #ffeb3b; }
-        .turn-Blue { color: #2196f3; }
-
-        /* DOSKANI MAKSIMAL KATTALASHTIRISH */
-        #board { 
-            display: grid; 
-            grid-template-columns: repeat(14, 1fr); 
-            width: 98vw; 
-            max-width: 600px; 
-            aspect-ratio: 1 / 1; 
-            border: 4px solid #555; 
-            background: #333;
-        }
-        
-        .cell { 
-            width: 100%; height: 100%; 
-            display: flex; justify-content: center; align-items: center; 
-            cursor: pointer; 
-            font-size: 7.5vw; /* DONALARNI KATTA QILDIK */
-            user-select: none;
-            -webkit-tap-highlight-color: transparent;
-        }
-        
-        @media (min-width: 600px) { .cell { font-size: 40px; } }
-
-        .white { background: #f0d9b5; }
-        .black { background: #b58863; }
-        .empty { visibility: hidden; }
-        .selected { background: #7b61ff !important; border: 2px solid white inset; }
+        body { background: #1a1a1a; color: white; margin: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; font-family: sans-serif; overflow: hidden; }
+        #ui { margin-bottom: 10px; font-size: 20px; font-weight: bold; }
+        #board { display: grid; grid-template-columns: repeat(14, 1fr); width: 98vw; max-width: 600px; aspect-ratio: 1 / 1; border: 4px solid #555; background: #333; }
+        .cell { width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; cursor: pointer; font-size: 6vw; user-select: none; -webkit-tap-highlight-color: transparent; }
+        @media (min-width: 600px) { .cell { font-size: 35px; } }
+        .white { background: #f0d9b5; } .black { background: #b58863; }
+        .empty { visibility: hidden; } .selected { background: #7b61ff !important; border: 2px solid white inset; }
+        /* Ranglar */
+        .p-green { color: #00ff00; } .p-red { color: #ff4444; }
+        .p-yellow { color: #ffeb3b; } .p-blue { color: #2196f3; }
     </style>
 </head>
 <body>
-
-<div id="ui">
-    Navbat: <span id="turn-display" class="turn-Green">Yashil</span>
-</div>
-
-<div id="board"></div>
+    <div id="ui">Navbat: <span id="turn-display" style="color:#00ff00">Yashil</span></div>
+    <div id="board"></div>
 
 <script>
     const turnDisplay = document.getElementById('turn-display');
     const turns = ["Green", "Red", "Yellow", "Blue"];
     const turnNames = {"Green": "Yashil", "Red": "Qizil", "Yellow": "Sariq", "Blue": "Moviy"};
+    const turnColors = {"Green": "#00ff00", "Red": "#ff4444", "Yellow": "#ffeb3b", "Blue": "#2196f3"};
     let currentTurnIndex = 0;
     let selectedID = null;
-
-    // Donalar ko'rinishi
-    const pieces = {
-        'Green': '♙♖♘♗♕♔',
-        'Red': '♟♜♞♝♛♚',
-        'Yellow': '♟♜♞♝♛♚', // Sariq va Moviy uchun ham hozircha qora donalar ishlatiladi
-        'Blue': '♟♜♞♝♛♚'
-    };
 
     function initBoard() {
         const board = document.getElementById('board');
@@ -75,67 +37,66 @@
                 const cell = document.createElement('div');
                 cell.id = `r${r}c${c}`;
                 cell.className = 'cell ' + ((r+c)%2==0?'white':'black');
-                
-                // 4 kishilik shaxmat shakli (burchaklarni yashirish)
-                if((r<3||r>10)&&(c<3||c>10)) {
-                    cell.classList.add('empty');
-                }
-                
+                if((r<3||r>10)&&(c<3||c>10)) cell.classList.add('empty');
                 cell.onclick = () => onCellClick(cell.id);
                 board.appendChild(cell);
             }
         }
-        setupInitialPieces();
+        setupAllPieces();
     }
 
-    function setupInitialPieces() {
-        // YASHIL (Pastki)
-        const gRow = 13, gPawn = 12;
-        const p = ['♖','♘','♗','♕','♔','♗','♘','♖'];
+    function setupAllPieces() {
+        const main = ['♖','♘','♗','♕','♔','♗','♘','♖'];
+        // YASHIL (Past)
         for(let i=0; i<8; i++) {
-            document.getElementById(`r${gRow}c${3+i}`).innerText = p[i];
-            document.getElementById(`r${gRow}c${3+i}`).style.color = "#00ff00";
-            document.getElementById(`r${gPawn}c${3+i}`).innerText = "♙";
-            document.getElementById(`r${gPawn}c${3+i}`).style.color = "#00ff00";
+            setPiece(13, 3+i, main[i], 'p-green');
+            setPiece(12, 3+i, '♙', 'p-green');
         }
+        // QIZIL (Tepa)
+        for(let i=0; i<8; i++) {
+            setPiece(0, 3+i, main[i], 'p-red');
+            setPiece(1, 3+i, '♟', 'p-red');
+        }
+        // SARIQ (Chap)
+        for(let i=0; i<8; i++) {
+            setPiece(3+i, 0, main[i], 'p-yellow');
+            setPiece(3+i, 1, '♟', 'p-yellow');
+        }
+        // MOVIY (O'ng)
+        for(let i=0; i<8; i++) {
+            setPiece(3+i, 13, main[i], 'p-blue');
+            setPiece(3+i, 12, '♙', 'p-blue');
+        }
+    }
 
-        // QIZIL (Tepadagi)
-        const rRow = 0, rPawn = 1;
-        for(let i=0; i<8; i++) {
-            document.getElementById(`r${rRow}c${3+i}`).innerText = p[i];
-            document.getElementById(`r${rRow}c${3+i}`).style.color = "#ff4444";
-            document.getElementById(`r${rPawn}c${3+i}`).innerText = "♟";
-            document.getElementById(`r${rPawn}c${3+i}`).style.color = "#ff4444";
-        }
+    function setPiece(r, c, char, cls) {
+        const el = document.getElementById(`r${r}c${c}`);
+        el.innerText = char;
+        el.classList.add(cls);
     }
 
     function onCellClick(id) {
         const cell = document.getElementById(id);
-        
         if(!selectedID) {
             if(cell.innerText !== "") {
                 selectedID = id;
                 cell.classList.add('selected');
             }
         } else {
-            const fromCell = document.getElementById(selectedID);
-            
-            // Donani ko'chirish
-            cell.innerText = fromCell.innerText;
-            cell.style.color = fromCell.style.color;
-            fromCell.innerText = "";
-            fromCell.classList.remove('selected');
-            
+            const from = document.getElementById(selectedID);
+            cell.innerText = from.innerText;
+            cell.className = from.className; // Rangini ham ko'chiradi
+            cell.classList.remove('selected');
+            from.innerText = "";
+            from.className = 'cell ' + ( (parseInt(selectedID.split('r')[1].split('c')[0]) + parseInt(selectedID.split('c')[1])) % 2 == 0 ? 'white' : 'black' );
             selectedID = null;
             
-            // Navbatni almashtirish
             currentTurnIndex = (currentTurnIndex + 1) % 4;
-            const nextTurn = turns[currentTurnIndex];
-            turnDisplay.innerText = turnNames[nextTurn];
-            turnDisplay.className = "turn-" + nextTurn;
+            const next = turns[currentTurnIndex];
+            turnDisplay.innerText = turnNames[next];
+            turnDisplay.style.color = turnColors[next];
         }
     }
-
     initBoard();
 </script>
 </body>
