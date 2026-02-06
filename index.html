@@ -3,42 +3,42 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Safarbek 4 Player Chess</title>
+    <title>Safarbek Real Chess</title>
     <style>
-        body { background: #2c3e50; color: white; margin: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; font-family: sans-serif; overflow: hidden; }
-        #ui { margin-bottom: 10px; padding: 8px 20px; border-radius: 5px; font-weight: bold; font-size: 18px; }
-        /* DOSKANI OLDINGI KICHIKROQ HOLATIGA QAYTARDIM */
-        #board { display: grid; grid-template-columns: repeat(14, 1fr); width: 90vw; max-width: 420px; aspect-ratio: 1 / 1; border: 3px solid #34495e; background: #7f8c8d; }
-        .cell { width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; cursor: pointer; font-size: 5.5vw; user-select: none; }
-        @media (min-width: 420px) { .cell { font-size: 24px; } }
-        .white { background: #ecf0f1; } .black { background: #bdc3c7; }
-        .empty { visibility: hidden; } .selected { background: #f1c40f !important; }
-        /* Jamoa ranglari */
-        .green { color: #27ae60; } .red { color: #e74c3c; }
-        .yellow { color: #f1c40f; } .blue { color: #3498db; }
+        body { background: #243447; color: white; margin: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; font-family: sans-serif; overflow: hidden; }
+        #ui { margin-bottom: 10px; padding: 10px 30px; border-radius: 8px; font-weight: bold; font-size: 18px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
+        #board { display: grid; grid-template-columns: repeat(14, 1fr); width: 92vw; max-width: 440px; aspect-ratio: 1/1; background: #2c3e50; border: 3px solid #1a1a1a; }
+        .cell { width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; cursor: pointer; font-size: 6vw; transition: 0.1s; position: relative; }
+        @media (min-width: 440px) { .cell { font-size: 28px; } }
+        .white { background: #e0e4e7; } .black { background: #a1adb5; }
+        .empty { background: #243447 !important; cursor: default; }
+        .selected { background: #f1c40f !important; }
+        .green { color: #2ecc71; } .red { color: #e74c3c; } .yellow { color: #f1c40f; } .blue { color: #3498db; }
     </style>
 </head>
 <body>
-    <div id="ui" style="background: #27ae60;">NAVBAT: <span id="turn-txt">GREEN</span></div>
+    <div id="ui" style="background: #2ecc71;">NAVBAT: <span id="turn-txt">GREEN</span></div>
     <div id="board"></div>
 
 <script>
     const turnUI = document.getElementById('ui');
     const turnTxt = document.getElementById('turn-txt');
     const teams = ["green", "red", "yellow", "blue"];
+    const colors = {green: '#2ecc71', red: '#e74c3c', yellow: '#f1c40f', blue: '#3498db'};
     let curIdx = 0, sel = null;
 
     function init() {
         const board = document.getElementById('board');
         board.innerHTML = "";
-        for(let i=0; i<196; i++) {
-            let r = Math.floor(i/14), c = i%14;
-            let d = document.createElement('div');
-            d.id = `r${r}c${c}`;
-            d.className = 'cell ' + ((r+c)%2==0?'white':'black');
-            if((r<3||r>10)&&(c<3||c>10)) d.classList.add('empty');
-            d.onclick = () => click(d);
-            board.appendChild(d);
+        for(let r=0; r<14; r++) {
+            for(let c=0; c<14; c++) {
+                let d = document.createElement('div');
+                d.id = `r${r}c${c}`;
+                let isCorner = (r < 3 || r > 10) && (c < 3 || c > 10);
+                d.className = 'cell ' + (isCorner ? 'empty' : ((r+c)%2==0?'white':'black'));
+                d.onclick = () => click(d);
+                board.appendChild(d);
+            }
         }
         setup();
     }
@@ -46,10 +46,10 @@
     function setup() {
         const main = ['♖','♘','♗','♕','♔','♗','♘','♖'];
         for(let i=0; i<8; i++) {
-            add(13, 3+i, main[i], 'green'); add(12, 3+i, '♙', 'green'); // Past
-            add(0, 3+i, main[i], 'red'); add(1, 3+i, '♟', 'red'); // Tepa
-            add(3+i, 0, main[i], 'yellow'); add(3+i, 1, '♟', 'yellow'); // Chap
-            add(3+i, 13, main[i], 'blue'); add(3+i, 12, '♙', 'blue'); // O'ng
+            add(13, 3+i, main[i], 'green'); add(12, 3+i, '♙', 'green');
+            add(0, 3+i, main[i], 'red'); add(1, 3+i, '♟', 'red');
+            add(3+i, 0, main[i], 'yellow'); add(3+i, 1, '♟', 'yellow');
+            add(3+i, 13, main[i], 'blue'); add(3+i, 12, '♙', 'blue');
         }
     }
 
@@ -59,41 +59,55 @@
     }
 
     function click(d) {
+        if(d.classList.contains('empty')) return;
         let turn = teams[curIdx];
+
         if(!sel) {
-            // Faqat o'z rangini tanlay oladi
             if(d.innerText !== "" && d.classList.contains(turn)) {
                 sel = d; d.classList.add('selected');
             }
         } else {
-            if(sel === d) { // Tanlashni bekor qilish
-                sel.classList.remove('selected'); sel = null; return;
-            }
-            // O'z jamoasini ura olmaydi
-            if(d.innerText !== "" && d.classList.contains(turn)) {
-                sel.classList.remove('selected'); sel = d; d.classList.add('selected'); return;
+            if(sel === d) { sel.classList.remove('selected'); sel = null; return; }
+            
+            // O'z jamoasini urmaslik
+            if(d.classList.contains(turn)) {
+                sel.classList.remove('selected');
+                sel = d; d.classList.add('selected');
+                return;
             }
 
-            // Harakatni amalga oshirish
-            d.innerText = sel.innerText;
-            d.className = sel.className; // Rangini o'tkazish
-            d.classList.remove('selected');
+            // SHOHNI URISH - O'YINDAN CHIQISH
+            if(d.innerText === '♔' || d.innerText === '♚' || d.innerText === '♔') {
+                alert("O'yin tugadi! " + turn.toUpperCase() + " jamoasi Shohni yutdi!");
+                location.reload();
+                return;
+            }
+
+            // KO'CHIRISH
+            let piece = sel.innerText;
+            d.innerText = piece;
             
+            // VAZIRGA AYLANISH (Piyoda oxiriga yetsa)
+            let [r, c] = d.id.match(/\d+/g).map(Number);
+            if((piece==='♙' || piece==='♟')) {
+                if((turn==='green' && r===0) || (turn==='red' && r===13) || 
+                   (turn==='yellow' && c===13) || (turn==='blue' && c===0)) {
+                    d.innerText = '♕';
+                }
+            }
+
+            teams.forEach(t => d.classList.remove(t));
+            d.classList.add(turn);
             sel.innerText = "";
-            let [r, c] = sel.id.match(/\d+/g).map(Number);
-            sel.className = 'cell ' + ((r+c)%2==0?'white':'black');
-            
+            sel.classList.remove(turn, 'selected');
             sel = null;
+
+            // Navbat
             curIdx = (curIdx + 1) % 4;
             turnTxt.innerText = teams[curIdx].toUpperCase();
-            turnUI.style.background = getHex(teams[curIdx]);
+            turnUI.style.background = colors[teams[curIdx]];
         }
     }
-
-    function getHex(t) {
-        return t==='green'?'#27ae60':t==='red'?'#e74c3c':t==='yellow'?'#f1c40f':'#3498db';
-    }
-
     init();
 </script>
 </body>
