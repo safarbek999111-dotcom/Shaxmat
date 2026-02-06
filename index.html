@@ -3,16 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>4 Player Chess Fix</title>
+    <title>4 Player Chess Pro</title>
     <style>
-        body { display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; background: #2c3e50; overflow: hidden; touch-action: none; font-family: sans-serif; }
+        body { display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100vh; margin: 0; background: #2c3e50; font-family: sans-serif; }
+        #status { color: white; font-size: 18px; margin-bottom: 10px; padding: 8px 20px; border-radius: 5px; font-weight: bold; }
         #board { display: grid; grid-template-columns: repeat(14, 6.5vw); grid-template-rows: repeat(14, 6.5vw); border: 2px solid #34495e; }
-        .cell { width: 6.5vw; height: 6.5vw; display: flex; justify-content: center; align-items: center; font-size: 5vw; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+        .cell { width: 6.5vw; height: 6.5vw; display: flex; justify-content: center; align-items: center; font-size: 5vw; cursor: pointer; transition: 0.2s; }
         .white { background-color: #ecf0f1; }
         .black { background-color: #95a5a6; }
-        .empty { background-color: transparent; border: none; pointer-events: none; }
+        .empty { background-color: transparent; pointer-events: none; }
         .red { color: #ff4d4d; } .blue { color: #4d94ff; } .yellow { color: #ffd11a; } .green { color: #4dff88; }
         .selected { background-color: #f1c40f !important; }
+        .turn-green { background: #4dff88; color: black !important; }
+        .turn-yellow { background: #ffd11a; color: black !important; }
+        .turn-red { background: #ff4d4d; color: white !important; }
+        .turn-blue { background: #4d94ff; color: white !important; }
         @media (min-width: 600px) {
             #board { grid-template-columns: repeat(14, 40px); grid-template-rows: repeat(14, 40px); }
             .cell { width: 40px; height: 40px; font-size: 30px; }
@@ -20,13 +25,25 @@
     </style>
 </head>
 <body>
+    <div id="status">Navbat: GREEN</div>
     <div id="board"></div>
+
     <script>
         const board = document.getElementById('board');
+        const statusDiv = document.getElementById('status');
         const pieces = { 'R': '♜', 'N': '♞', 'B': '♝', 'Q': '♛', 'K': '♚', 'P': '♟' };
         const order = ['R','N','B','Q','K','B','N','R'];
+        const turnOrder = ['green', 'yellow', 'red', 'blue'];
+        let currentTurnIndex = 0;
         let selectedCell = null;
 
+        function updateStatus() {
+            const color = turnOrder[currentTurnIndex];
+            statusDiv.innerText = "Navbat: " + color.toUpperCase();
+            statusDiv.className = "turn-" + color;
+        }
+
+        // Taxtani yaratish
         for (let r = 0; r < 14; r++) {
             for (let c = 0; c < 14; c++) {
                 const cell = document.createElement('div');
@@ -56,26 +73,41 @@
                 }
 
                 cell.addEventListener('click', function() {
+                    const activeColor = turnOrder[currentTurnIndex];
                     if (selectedCell) {
                         if (canMove(selectedCell, this)) {
-                            // 1. Yangi katakka ma'lumotlarni ko'chirish
-                            this.innerText = selectedCell.innerText;
-                            this.dataset.type = selectedCell.dataset.type;
-                            this.dataset.color = selectedCell.dataset.color;
-                            
-                            // 2. Rang klasslarini to'g'irlash
+                            let pType = selectedCell.dataset.type;
+                            let pColor = selectedCell.dataset.color;
+                            let tr = parseInt(this.dataset.r);
+                            let tc = parseInt(this.dataset.c);
+
+                            // 1. Piyoda Vazir bo'lishi
+                            if (pType === 'P') {
+                                if ((pColor === 'green' && tr === 3) || (pColor === 'red' && tr === 10) ||
+                                    (pColor === 'yellow' && tc === 10) || (pColor === 'blue' && tc === 3)) {
+                                    pType = 'Q';
+                                }
+                            }
+
+                            // Ko'chirish
+                            this.innerText = pieces[pType];
+                            this.dataset.type = pType;
+                            this.dataset.color = pColor;
                             this.classList.remove('red', 'green', 'blue', 'yellow');
-                            this.classList.add(selectedCell.dataset.color);
+                            this.classList.add(pColor);
                             
-                            // 3. Eski katakni butkul tozalash
                             selectedCell.innerText = '';
-                            selectedCell.classList.remove('red', 'green', 'blue', 'yellow');
+                            selectedCell.classList.remove('red', 'green', 'blue', 'yellow', 'selected');
                             delete selectedCell.dataset.type;
                             delete selectedCell.dataset.color;
+
+                            // 2. Navbatni o'zgartirish
+                            currentTurnIndex = (currentTurnIndex + 1) % 4;
+                            updateStatus();
                         }
-                        selectedCell.classList.remove('selected');
+                        if(selectedCell) selectedCell.classList.remove('selected');
                         selectedCell = null;
-                    } else if (this.innerText !== '') {
+                    } else if (this.dataset.color === activeColor) {
                         selectedCell = this;
                         this.classList.add('selected');
                     }
@@ -91,7 +123,6 @@
             const color = from.dataset.color;
             const targetColor = to.dataset.color;
 
-            // O'z rangidagilarni urishni taqiqlash (Eng muhim qator)
             if (targetColor === color) return false;
 
             const dr = Math.abs(tr - fr), dc = Math.abs(tc - fc);
@@ -101,10 +132,32 @@
             if (type === 'B') return (dr === dc);
             if (type === 'Q') return (fr === tr || fc === tc || dr === dc);
             if (type === 'K') return (dr <= 1 && dc <= 1);
-            if (type === 'P') return (dr + dc === 1 || (dr === 1 && dc === 1 && targetColor));
-
+            
+            // 3. Piyoda qoidasi (2 qadam bilan)
+            if (type === 'P') {
+                if (targetColor) return dr === 1 && dc === 1; // Diagonal urish
+                if (dc === 0) {
+                    if (color === 'green') {
+                        if (fr === 12) return (fr - tr === 1 || fr - tr === 2);
+                        return fr - tr === 1;
+                    }
+                    if (color === 'red') {
+                        if (fr === 1) return (tr - fr === 1 || tr - fr === 2);
+                        return tr - fr === 1;
+                    }
+                    if (color === 'yellow') {
+                        if (fc === 1) return (tc - fc === 1 || tc - fc === 2);
+                        return tc - fc === 1;
+                    }
+                    if (color === 'blue') {
+                        if (fc === 12) return (fc - tc === 1 || fc - tc === 2);
+                        return fc - tc === 1;
+                    }
+                }
+            }
             return false;
         }
+        updateStatus();
     </script>
 </body>
 </html>
