@@ -1,36 +1,14 @@
-// canMove funksiyasini mana bu professional variant bilan almashtiring:
-function canMove(from, to) {
-    const fr = parseInt(from.dataset.r), fc = parseInt(from.dataset.c);
-    const tr = parseInt(to.dataset.r), tc = parseInt(to.dataset.c);
-    const type = from.dataset.type;
-    const color = from.dataset.color;
-    const dr = tr - fr;
-    const dc = tc - fc;
-    const absDr = Math.abs(dr);
-    const absDc = Math.abs(dc);
-
-    // 1. Ot (Knight) - L shakli
-    if (type === 'N') return (absDr === 2 && absDc === 1) || (absDr === 1 && absDc === 2);
-
-    // 2. To'ra (Rook) - To'g'ri chiziq
-    if (type === 'R') return (fr === tr || fc === tc);
-
-    // 3. Fil (Bishop) - Diagonal
-    if (type === 'B') return (absDr === absDc);
-
-    // 4. Farzin (Queen) - To'g'ri va Diagonal
-    if (type === 'Q') return (fr === tr || fc === tc || absDr === absDc);
-
-    // 5. Shoh (King) - Atrofidagi 1 katak
-    if (type === 'K') return (absDr <= 1 && absDc <= 1);
-
-    // 6. Piyoda (Pawn) - Yo'nalishga qarab
-    if (type === 'P') {
-        if (color === 'green' && dc === 0 && dr === -1) return true; // Pastdan tepaga
-        if (color === 'red' && dc === 0 && dr === 1) return true;    // Tepadan pastga
-        if (color === 'yellow' && dr === 0 && dc === 1) return true; // Chapdan o'ngga
-        if (color === 'blue' && dr === 0 && dc === -1) return true;  // O'ngdan chapga
-    }
-
-    return false;
+// Namuna: Qizil figuralar uchun (Tepa qism)
+if (r === 0 && c >= 3 && c <= 10) { 
+    cell.innerText = pieces[order[c-3]]; 
+    cell.classList.add('red');
+    cell.dataset.type = order[c-3]; // Bu qatorni qo'shing (N, R, B va hokazo)
+    cell.dataset.color = 'red';      // Bu qatorni qo'shing
 }
+if (r === 1 && c >= 3 && c <= 10) { 
+    cell.innerText = pieces['P']; 
+    cell.classList.add('red');
+    cell.dataset.type = 'P';        // Piyoda turi
+    cell.dataset.color = 'red';
+}
+// Huddi shunday Green, Yellow va Blue figuralar uchun ham dataset qo'shib chiqing.
